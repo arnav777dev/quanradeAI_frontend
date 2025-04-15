@@ -480,31 +480,31 @@ let ws: WebSocket | null = null;
               let tokens = [...new Set(Data.map(x => x.instrument_token))];
               console.log("tokens", tokens);
               
-              const userDetails = localStorage.getItem("userDetails") 
-                ? JSON.parse(localStorage.getItem("userDetails") || "") 
-                : {};
-                const { access_token, api_key } = userDetails?.user?.kite || {};
+              // const userDetails = localStorage.getItem("userDetails") 
+              //   ? JSON.parse(localStorage.getItem("userDetails") || "") 
+              //   : {};
+                // const { access_token, api_key } = userDetails?.user?.kite || {};
               // Check if user details and tokens are available before making the API call
-              if (tokens.length > 0 && access_token && api_key) {
-                // Make the API request
-                try {
-                  const response = await axios.get('http://localhost:3004/api/getLiveData', {
-                    params: {
-                      api_key,
-                      access_token,
-                      tokens: tokens,// Ensure tokens are passed as a comma-separated string
-                    }
-                  });
+              // if (tokens.length > 0 && access_token && api_key) {
+              //   // Make the API request
+              //   try {
+              //     const response = await axios.get('http://localhost:3004/api/getLiveData', {
+              //       params: {
+              //         api_key,
+              //         access_token,
+              //         tokens: tokens,// Ensure tokens are passed as a comma-separated string
+              //       }
+              //     });
         
-                  console.log('API Response:', response.data);
-                  // Handle the response here
-                } catch (error) {
-                  console.error('Error fetching live spread:', error);
-                  // Handle the error here
-                }
-              } else {
-                console.error('Missing user details or tokens');
-              }
+              //     console.log('API Response:', response.data);
+              //     // Handle the response here
+              //   } catch (error) {
+              //     console.error('Error fetching live spread:', error);
+              //     // Handle the error here
+              //   }
+              // } else {
+              //   console.error('Missing user details or tokens');
+              // }
             }
           };
         

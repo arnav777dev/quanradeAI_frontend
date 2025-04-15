@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useCallback, useContext, useEffect } from 'react';
 import { ThemeContext } from '../../../context/ThemeContext';
 import {  useMemo, useRef, useState } from 'react';
 //MRT Imports
@@ -70,8 +70,11 @@ interface WebSocketData {
 
 let ws: WebSocket | null = null;
 
-const UserDetailPanel = ({ row }) => {
-  const [userData, setUserData] = useState<MonthlyStatusINT[]>(row.original.status_history); // Updated type to an array of MonthlyStatusINTs
+const UserDetailPanel = React.memo(({ row }) => {
+  // const [userData, setUserData] = useState<MonthlyStatusINT[]>(row.original.status_history); // Updated type to an array of MonthlyStatusINTs
+
+  // const [userData, setUserData] = useState<MonthlyStatusINT[]>(() => row.original.status_history);
+
 
   // Table Columns Setup
   const columns = useMemo<MRT_ColumnDef<MonthlyStatusINT>[]>(() => [
@@ -151,7 +154,10 @@ const UserDetailPanel = ({ row }) => {
     },
   ], []);
 
-  const data = useMemo(() => userData, [userData]); // Data is the full userData array
+  // const data = useMemo(() => userData, [userData]); // Data is the full userData array
+
+  const data = useMemo(() => row.original.status_history, [row.original.status_history]);
+
 
   const table_is_superuser = useMaterialReactTable({
     columns,
@@ -193,7 +199,7 @@ const UserDetailPanel = ({ row }) => {
         </CardContent>
       </Card>
   );
-};
+});
   
   
   const InActive_Users = (_data) => {
@@ -265,7 +271,7 @@ const UserDetailPanel = ({ row }) => {
      // await updateUser(values);
       table.setEditingRow(null); //exit editing mode
     };
-        const fetchIndexData = async () => {
+    const fetchIndexData = async () => {
           try {
     
             ws = new WebSocket('ws://localhost:7789');
