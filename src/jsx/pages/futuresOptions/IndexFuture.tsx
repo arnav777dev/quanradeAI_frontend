@@ -370,6 +370,7 @@ const UserDetailPanel = ({ row }) => {
          
              if (flattenedRow) {
               flattenedRow.orders.forEach((order) => {
+                order.instruments = flattenedRow.instruments;
                  if (order) {
                    if (order.order_type === "entry") {
                      entryRows.push(order);
@@ -513,26 +514,26 @@ const UserDetailPanel = ({ row }) => {
                 : {};
                 const { access_token, api_key } = userDetails?.user?.kite || {};
               // Check if user details and tokens are available before making the API call
-              if (tokens.length > 0 && access_token && api_key) {
-                // Make the API request
-                try {
-                  const response = await axios.get('http://localhost:3004/api/getLiveData', {
-                    params: {
-                      api_key,
-                      access_token,
-                      tokens: tokens,// Ensure tokens are passed as a comma-separated string
-                    }
-                  });
+              // if (tokens.length > 0 && access_token && api_key) {
+              //   // Make the API request
+              //   try {
+              //     const response = await axios.get('http://localhost:3004/api/getLiveData', {
+              //       params: {
+              //         api_key,
+              //         access_token,
+              //         tokens: tokens,// Ensure tokens are passed as a comma-separated string
+              //       }
+              //     });
         
-                  console.log('API Response:', response.data);
-                  // Handle the response here
-                } catch (error) {
-                  console.error('Error fetching live spread:', error);
-                  // Handle the error here
-                }
-              } else {
-                console.error('Missing user details or tokens');
-              }
+              //     console.log('API Response:', response.data);
+              //     // Handle the response here
+              //   } catch (error) {
+              //     console.error('Error fetching live spread:', error);
+              //     // Handle the error here
+              //   }
+              // } else {
+              //   console.error('Missing user details or tokens');
+              // }
             }
           };
           const filtered = Data.filter((row) => {
@@ -613,14 +614,18 @@ const UserDetailPanel = ({ row }) => {
             ),
           },
           {
-            accessorFn: (row) => `${row.orders?.[0]?.order_type ?? ''}`, // Safely access orders[0] and order_type
-            header: 'Order Type',
+            accessorFn: (row) => {
+            const triggeredOrder = row.orders?.find(order => order.status === "triggered");
+            return triggeredOrder?.order_type ?? 'Active'; // Return first non-active order_type or empty string
+            }, // Safely access orders[0] and order_type
+            // dasjkadksj
+            header: 'Status',
             size: 50,
             Cell: ({ renderedCellValue, row }) => (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <span>{renderedCellValue}</span>
-              </Box>
-            ),
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <span>{renderedCellValue}</span>
+            </Box>
+          ),
           },
         {
           accessorFn: (row) => `${row.expiry}`,

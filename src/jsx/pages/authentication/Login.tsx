@@ -55,16 +55,20 @@ function Login (props) {
 					const res = await response.data.data;
 					localStorage.setItem('userDetails', JSON.stringify(res));
 					localStorage.setItem('login', "true");
-
+				
+					swal({
+						title: "Success!",
+						text: "Login successful. Redirecting to dashboard...",
+						icon: "success",
+						timer: 1200,  // Auto-close after 2 sec
+						buttons: false, // ✅ Hides the button properly
+					});
 					let currentUrl = window.location.href;
-					// Replace '/login' with '/dashboard'
 					let updatedUrl = currentUrl.replace('/login', '/dashboard');
-					// Redirect to the updated URL
 					window.location.href = updatedUrl;
-				}
-
+				} 
 			} catch (error) {
-				swal("Unauthorized!",error?.response?.data?.data, "error");
+				swal("Unauthorized!",error?.response?.data?.data  || "Something went wrong", "error");
 			}
 		}
 	}

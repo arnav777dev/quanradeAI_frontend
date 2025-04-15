@@ -55,42 +55,40 @@ if (myValue !== null) {
 }
 // Example token
 const token = localStorage.getItem("userDetails") || ""; // Provide a fallback to an empty string
-console.log(token);
 const accessToken = token ? JSON.parse(token).access : "";
 
 const headers = {
   Authorization: "Bearer " + accessToken,
 };
-
+const getRowHeight = () => 'auto';
 const columnsMissed: GridColDef[] = [
-  { field: "id", headerName: "Id", width: 130 },
-  { field: "symbol", headerName: "Symbol", width: 130 },
-  { field: "trading_symbol", headerName: "Trading Symbol", width: 130 },
-  { field: "strategy", headerName: "Strategy", width: 130 },
-  { field: "expiry", headerName: "Expiry", width: 130 },
+  { field: "id", headerName: "Sr. No.", width: 100 },
+  { field: "symbols", headerName: "Symbols", width: 500},
+  { field: "strategy", headerName: "Strategy", width: 180 },
+  { field: "expiry", headerName: "Expiry", width: 100 },
+  { field: "lastModified", headerName: "Last Modified At", width: 130 },
 ];
 const columnsSL: GridColDef[] = [
-  { field: "id", headerName: "Id", width: 130 },
-  { field: "symbol", headerName: "Symbol", width: 130 },
-  { field: "trading_symbol", headerName: "Trading Symbol", width: 130 },
-  { field: "strategy", headerName: "Strategy", width: 130 },
-  { field: "expiry", headerName: "Expiry", width: 130 },
+  { field: "id", headerName: "Sr. No.", width: 100 },
+  { field: "symbols", headerName: "Symbols", width: 500},
+  { field: "strategy", headerName: "Strategy", width: 150 },
+  { field: "expiry", headerName: "Expiry", width: 100 },
+  { field: "lastModified", headerName: "Last Modified At", width: 130 },
 ];
 const columnsRejected: GridColDef[] = [
-  { field: "id", headerName: "Id", width: 130 },
-  { field: "rejected_symbols", headerName: "Symbols", width: 130 },
-  { field: "strategy", headerName: "Strategy", width: 130 },
-  { field: "reason", headerName: "Reason", width: 130 },
-  { field: "expiry", headerName: "Expiry", width: 130 },
+  { field: "id", headerName: "Sr. No.", width: 100 },
+  { field: "symbols", headerName: "Symbols", width: 500 },
+  { field: "strategy", headerName: "Strategy", width: 150 },
+  { field: "expiry", headerName: "Expiry", width: 100 },
+  { field: "lastModified", headerName: "Last Modified At", width: 130 },
 ];
 
-const rows: readonly any[] | undefined = [];
 interface DataType {
   rejected_symbols: any;
   strategy_fk:any;
   id?: string;
   name?: string;
-  symbol?: string;
+  symbols?: string;
   strategy?: string;
   reason?: string;
   expiry?: string; // Optional for rejected data
@@ -152,21 +150,88 @@ export default function PatchUpdate() {
     setRejectedData(regenrateData.filter((item) => item.is_rejected === true));
   }, [regenrateData]);
 
+  const isToday = (dateString: string): boolean => {
+    const givenDate = new Date(dateString).toISOString().split("T")[0]; // Extract YYYY-MM-DD
+    const today = new Date().toISOString().split("T")[0]; // Today's YYYY-MM-DD
+    return givenDate === today;
+  };
+  
+  const formatDate = (dateString: string): string => {
+    return new Date(dateString).toISOString().split("T")[0]; // Extract YYYY-MM-DD
+  };
+  
+  const generateStrategySymbolMap = (data: any[]): any => {
+    const strategyMap: Record<string, { 
+      expiry: string; 
+      id: number; 
+      symbols: string[];
+      lastModified: string;
+    }> = {};
+  
+    // Filter data to include only today's records
+    // const filteredData = data.filter(item => isToday(item.modified_at));
+    const filteredData = data;
+  
+    // Extract unique strategies and sort them alphabetically
+    const uniqueStrategies = Array.from(
+      new Set(filteredData.map(item => item.strategy_fk?.display_name ?? ""))
+    ).sort();
+  
+    // Assign IDs and initialize the map
+    uniqueStrategies.forEach((strategy, index) => {
+      strategyMap[strategy] = { expiry: "", id: index + 1, symbols: [], lastModified: "" };
+    });
+  
+    // Populate the symbols, expiry, and lastModified fields
+    filteredData.forEach(item => {
+      const strategy = item.strategy_fk?.display_name ?? "";
+      if (strategy && strategyMap[strategy]) {
+        if (item.is_rejected) {
+          strategyMap[strategy].symbols.push(...item.rejected_symbols);
+        } else {
+          strategyMap[strategy].symbols.push(item.symbol);
+        }
+        strategyMap[strategy].symbols = [...new Set(strategyMap[strategy].symbols)];
+  
+        if (!strategyMap[strategy].expiry) {
+          strategyMap[strategy].expiry = item.expiry;
+        }
+  
+        // Update lastModified with the most recent date in YYYY-MM-DD format
+        const formattedDate = formatDate(item.modified_at);
+        if (!strategyMap[strategy].lastModified || new Date(item.modified_at) > new Date(strategyMap[strategy].lastModified)) {
+          strategyMap[strategy].lastModified = formattedDate;
+        }
+      }
+    });
+  
+    return strategyMap;
+  };
+  
   const filterRegenrateData = (data: any[], columns: any[]): any[] => {
-    return data.map((item) => {
-      const filteredItem: any = {};
-      columns.forEach((col) => {
+    // Generate the strategy-symbol map with IDs
+    const strategyMap = generateStrategySymbolMap(data);
+  
+    return Object.entries(strategyMap).map(([strategy, { expiry, id, symbols, lastModified }]) => {
+      const filteredItem: any = { id };
+  
+      columns.forEach(col => {
         if (col.field === "strategy") {
-          // If column name is "Strategy", retrieve data.strategy_fk.display_name
-          filteredItem[col.field] = item.strategy_fk?.display_name;
-        } else if (item[col.field] !== undefined) {
-          // For other columns, just copy the value
-          filteredItem[col.field] = item[col.field];
+          filteredItem[col.field] = strategy;
+        } else if (col.field === "symbols") {
+          filteredItem[col.field] = symbols.join(", ");
+        } else if (col.field === "expiry") {
+          filteredItem[col.field] = expiry;
+        } else if (col.field === "lastModified") {
+          filteredItem[col.field] = lastModified; // Now formatted as YYYY-MM-DD
         }
       });
+  
       return filteredItem;
     });
   };
+  
+  
   const handleDialogOpen = (name: string) => {
     if (selectedName === name) {
       return; // Prevent reopening the dialog with the same name
@@ -442,24 +507,46 @@ const[SelectedData,SetSelectedData]= useState<any>([]);
   };
 
 const HandelRowSeleted = async () => {
-  const currentData =
+  console.log("regenrate clicked");
+  let currentData =
     valueinner === 0 ? missedData :
     valueinner === 1 ? slData :
     rejectedData;
+  currentData = filterRegenrateData(currentData, columnsMissed);
+  console.log("to ",currentData)
+  
+  const selectedRowData = currentData.filter((row: any) => selectedRows.includes(row.id));
+  console.log("selected rowdata ",selectedRowData)
 
-  const selectedRowData = currentData.filter((row:any) => SelectedData.includes(row.id));
+// Initialize arrays to store the final data
+let selectedSymbol: (string | undefined)[] = [];
+let strategyname: (string | undefined)[] = [];
+let expiryDate: (string | undefined)[] = [];
 
-  const selectedSymbol = selectedRowData.map((row) => row.rejected_symbols||row.rejected_symbols);
-  const strategyname = selectedRowData.map((row) => row.strategy_fk.name);
-  const expiryDate = selectedRowData.map((row) => row.expiry);
+// Loop through the selected rows
+selectedRowData.forEach((row) => {
+  // Split symbols into an array if it's a comma-separated string
+  const symbols = row.symbols?.split(', ');
 
-  const requestData = {
-    symbols: selectedSymbol,
-    strategy_name: strategyname,
-    batch_size: 3,
-    sleep_time: 1,
-    expiry_date: expiryDate,
-  };
+  // For each symbol, add corresponding strategy and expiry
+  symbols?.forEach((symbol) => {
+    selectedSymbol.push(symbol);
+    strategyname.push(row.strategy);  // Corresponding strategy
+    expiryDate.push(row.expiry);      // Corresponding expiry
+  });
+});
+
+// Construct the requestData object
+const requestData = {
+  symbols: selectedSymbol,
+  strategy_name: strategyname,
+  batch_size: 3,
+  sleep_time: 1,
+  expiry_date: expiryDate,
+};
+
+console.log("to API:", requestData);
+
 
   try {
     // Make the POST request to the API
@@ -569,13 +656,14 @@ const HandelRowSeleted = async () => {
                 onChange={handleChangeInner}
                 aria-label="basic tabs example"
               >
-                <Tab label="Missed" {...a11yPropsInner(0)} />
-                <Tab label="SL" {...a11yPropsInner(1)} />
-                <Tab label="Rejected" {...a11yPropsInner(2)} />
+                <Tab label="Entry Missed" {...a11yPropsInner(0)} />
+                <Tab label="SL Missed" {...a11yPropsInner(1)} />
+                <Tab label="Rejected Symbol" {...a11yPropsInner(2)} />
+                <Tab label="SL Hit" {...a11yPropsInner(3)} />
               </Tabs>
               
 
-      {/* Missed Tab */}
+      {/* Entry Missed Tab */}
       <CustomTabPanel value={valueinner} index={0}>
         <Paper sx={{ height: 270, width: "100%" }}>
           <DataGrid
@@ -584,6 +672,7 @@ const HandelRowSeleted = async () => {
             checkboxSelection
             onRowSelectionModelChange={handleSelectionChange}
             rowSelectionModel={selectedRows}
+            getRowHeight={getRowHeight}
             sx={{
               border: 0,
               "& .MuiDataGrid-columnHeaders": { paddingLeft: "8px" },
@@ -598,25 +687,26 @@ const HandelRowSeleted = async () => {
         </Paper>
       </CustomTabPanel>
 
-      {/* SL Tab */}
+      {/* SL missed Tab */}
       <CustomTabPanel value={valueinner} index={1}>
         <Paper sx={{ height: 270, width: "100%" }}>
           <DataGrid
            rows={filterRegenrateData(slData, columnsSL)}  // Your data
            columns={columnsSL}  // Your columns
            checkboxSelection
-           onRowSelectionModelChange={handleSelectionChange}  // Update selected rows
-           rowSelectionModel={selectedRows.selectionModel}  // Pass selected row IDs here
-           hideFooterPagination={true}
-           hideFooter={true}
-           sx={{
-             border: 0,
-             "& .MuiDataGrid-columnHeaders": { paddingLeft: "8px" },
-             "& .MuiDataGrid-cell": { padding: "8px 12px" },
-             columnSpacing: 2,
-           }}
-           localeText={{ noRowsLabel: "No records found" }}
-           getRowId={(row) => row.id}
+            onRowSelectionModelChange={handleSelectionChange}
+            rowSelectionModel={selectedRows}
+            getRowHeight={getRowHeight}
+            sx={{
+              border: 0,
+              "& .MuiDataGrid-columnHeaders": { paddingLeft: "8px" },
+              "& .MuiDataGrid-cell": { padding: "8px 12px" },
+              columnSpacing: 2,
+            }}
+            hideFooterPagination={true}
+            hideFooter={true}
+            localeText={{ noRowsLabel: "No records found" }}
+            getRowId={(row) => row.id}
           />
         </Paper>
       </CustomTabPanel>
@@ -624,11 +714,36 @@ const HandelRowSeleted = async () => {
       {/* Rejected Tab */}
       <CustomTabPanel value={valueinner} index={2}>
         <Paper sx={{ height: 270, width: "100%" }}>
+        <DataGrid
+          rows={filterRegenrateData(rejectedData, columnsRejected)}
+          columns={columnsRejected}
+          checkboxSelection
+            onRowSelectionModelChange={handleSelectionChange}
+            rowSelectionModel={selectedRows}
+            getRowHeight={getRowHeight}
+            sx={{
+              border: 0,
+              "& .MuiDataGrid-columnHeaders": { paddingLeft: "8px" },
+              "& .MuiDataGrid-cell": { padding: "8px 12px" },
+              columnSpacing: 2,
+            }}
+            hideFooterPagination={true}
+            hideFooter={true}
+            localeText={{ noRowsLabel: "No records found" }}
+            getRowId={(row) => row.id}
+        />
+        </Paper>
+      </CustomTabPanel>
+
+      {/* SL Hit Tab */}
+      <CustomTabPanel value={valueinner} index={3}>
+        <Paper sx={{ height: 270, width: "100%" }}>
           <DataGrid
             rows={filterRegenrateData(rejectedData, columnsRejected)}
             columns={columnsRejected}
             checkboxSelection
             onRowSelectionModelChange={handleSelectionChange}
+            getRowHeight={getRowHeight}
             sx={{
               border: 0,
               "& .MuiDataGrid-columnHeaders": { paddingLeft: "8px" },
